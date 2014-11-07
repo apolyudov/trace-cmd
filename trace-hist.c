@@ -357,9 +357,9 @@ process_function_graph_entry(struct pevent *pevent, struct pevent_record *record
 
 	current_pid = pid;
 
-	if (depth != ips_idx) {
+	if ((int)depth != ips_idx) {
 		save_call_chain(pid, ips, ips_idx, 0);
-		while (ips_idx > depth)
+		while (ips_idx > (int)depth)
 			pop_stack_func();
 	}
 
@@ -369,7 +369,7 @@ process_function_graph_entry(struct pevent *pevent, struct pevent_record *record
 }
 
 static void
-process_function_graph_exit(struct pevent *pevent, struct pevent_record *record)
+process_function_graph_exit(struct pevent *pevent __attribute__((unused)), struct pevent_record *record)
 {
 	unsigned long long depth;
 	unsigned long long val;
@@ -394,9 +394,9 @@ process_function_graph_exit(struct pevent *pevent, struct pevent_record *record)
 
 	current_pid = pid;
 
-	if (ips_idx != depth) {
+	if (ips_idx != (int)depth) {
 		save_call_chain(pid, ips, ips_idx, 0);
-		while (ips_idx > depth)
+		while (ips_idx > (int)depth)
 			pop_stack_func();
 	}
 
@@ -428,7 +428,7 @@ process_kernel_stack(struct pevent *pevent, struct pevent_record *record)
 {
 	struct format_field *field = kernel_stack_caller_field;
 	unsigned long long val;
-	void *data = record->data;
+	char *data = record->data;
 	int do_restore = 0;
 	int pid;
 	int ret;
@@ -461,7 +461,7 @@ process_kernel_stack(struct pevent *pevent, struct pevent_record *record)
 	current_pid = pid;
 
 	/* Need to start at the end of the callers and work up */
-	for (data += field->offset; data < record->data + record->size;
+	for (data += field->offset; data < (char*)record->data + record->size;
 	     data += long_size) {
 		unsigned long long addr;
 
@@ -472,7 +472,7 @@ process_kernel_stack(struct pevent *pevent, struct pevent_record *record)
 			break;
 	}
 
-	for (data -= long_size; data >= record->data + field->offset; data -= long_size) {
+	for (data -= long_size; data >= (char*)record->data + field->offset; data -= long_size) {
 		unsigned long long addr;
 		const char *func;
 
@@ -498,12 +498,12 @@ process_sched_wakeup(struct pevent *pevent, struct pevent_record *record, int ty
 	int ret;
 
 	if (type == sched_wakeup_type) {
-		comm = (char *)(record->data + sched_wakeup_comm_field->offset);
+		comm = (char *)record->data + sched_wakeup_comm_field->offset;
 		ret = pevent_read_number_field(sched_wakeup_pid_field, record->data, &val);
 		if (ret < 0)
 			die("no pid field in sched_wakeup?");
 	} else {
-		comm = (char *)(record->data + sched_wakeup_new_comm_field->offset);
+		comm = (char *)record->data + sched_wakeup_new_comm_field->offset;
 		ret = pevent_read_number_field(sched_wakeup_new_pid_field, record->data, &val);
 		if (ret < 0)
 			die("no pid field in sched_wakeup_new?");
@@ -522,14 +522,14 @@ process_sched_switch(struct pevent *pevent, struct pevent_record *record)
 	int pid;
 	int ret;
 
-	comm = (char *)(record->data + sched_switch_prev_field->offset);
+	comm = (char *)record->data + sched_switch_prev_field->offset;
 	ret = pevent_read_number_field(sched_switch_prev_pid_field, record->data, &val);
 	if (ret < 0)
 		die("no prev_pid field in sched_switch?");
 	pid = val;
 	pevent_register_comm(pevent, comm, pid);
 
-	comm = (char *)(record->data + sched_switch_next_field->offset);
+	comm = (char *)record->data + sched_switch_next_field->offset;
 	ret = pevent_read_number_field(sched_switch_next_pid_field, record->data, &val);
 	if (ret < 0)
 		die("no next_pid field in sched_switch?");

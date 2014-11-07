@@ -116,7 +116,7 @@ static void update_option(const char *file, struct plugin_option *option);
  *
  * Sets the options with the values that have been added by user.
  */
-void trace_util_add_options(const char *name, struct plugin_option *options)
+void trace_util_add_options(const char *name __attribute__((unused)), struct plugin_option *options)
 {
 	struct registered_plugin_options *reg;
 
@@ -361,16 +361,15 @@ void trace_util_print_plugin_options(struct trace_seq *s)
 void parse_cmdlines(struct pevent *pevent,
 		    char *file, int size __maybe_unused)
 {
-	char *comm;
+	char comm[32];
 	char *line;
 	char *next = NULL;
 	int pid;
 
 	line = strtok_r(file, "\n", &next);
 	while (line) {
-		sscanf(line, "%d %ms", &pid, &comm);
+		sscanf(line, "%d %s", &pid, comm);
 		pevent_register_comm(pevent, comm, pid);
-		free(comm);
 		line = strtok_r(NULL, "\n", &next);
 	}
 }
@@ -378,12 +377,12 @@ void parse_cmdlines(struct pevent *pevent,
 static void extract_trace_clock(struct pevent *pevent, char *line)
 {
 	char *data;
-	char *clock;
+	char clock[256];
 	char *next = NULL;
 
 	data = strtok_r(line, "[]", &next);
-	sscanf(data, "%ms", &clock);
-	pevent_register_trace_clock(pevent, clock);
+	sscanf(data, "%s", clock);
+	pevent_register_trace_clock(pevent, strdup(clock));
 }
 
 void parse_trace_clock(struct pevent *pevent,
@@ -405,38 +404,35 @@ void parse_proc_kallsyms(struct pevent *pevent,
 			 char *file, unsigned int size __maybe_unused)
 {
 	unsigned long long addr;
-	char *func;
+	char func[256];
 	char *line;
 	char *next = NULL;
-	char *addr_str;
-	char *mod;
+	char addr_str[32];
+	char mod[256];
 	char ch;
 
 	line = strtok_r(file, "\n", &next);
 	while (line) {
-		mod = NULL;
+	    int n;
+		char *pmod = NULL;
 		errno = 0;
-		sscanf(line, "%ms %c %ms\t[%ms",
-			     &addr_str, &ch, &func, &mod);
+		n=sscanf(line, "%s %c %s\t[%s",
+			     addr_str, &ch, func, mod);
 		if (errno) {
-			free(addr_str);
-			free(func);
-			free(mod);
 			perror("sscanf");
 			return;
 		}
 		addr = strtoull(addr_str, NULL, 16);
-		free(addr_str);
 
 		/* truncate the extra ']' */
-		if (mod)
+		if (n == 4) {
 			mod[strlen(mod) - 1] = 0;
+			pmod = mod;
+		}
 
 		/* Hack for arm arch that adds a lot of bogus '$a' functions */
 		if (func[0] != '$')
-			pevent_register_function(pevent, func, addr, mod);
-		free(func);
-		free(mod);
+			pevent_register_function(pevent, func, addr, pmod);
 
 		line = strtok_r(NULL, "\n", &next);
 	}
@@ -1260,7 +1256,7 @@ struct add_plugin_data {
 	char **files;
 };
 
-static void add_plugin_file(struct pevent *pevent, const char *path,
+static void add_plugin_file(struct pevent *pevent __attribute__((unused)), const char *path __attribute__((unused)),
 			    const char *name, void *data)
 {
 	struct add_plugin_data *pdata = data;
@@ -1405,7 +1401,7 @@ static void append_option(struct plugin_option_read *options,
 	}
 }
 
-static void read_options(struct pevent *pevent, const char *path,
+static void read_options(struct pevent *pevent __attribute__((unused)), const char *path,
 			 const char *file, void *data)
 {
 	struct plugin_option_read *options = data;

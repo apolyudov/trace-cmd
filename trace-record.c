@@ -184,7 +184,7 @@ void add_instance(struct buffer_instance *instance)
  * Returns a newly allocated instance. Note that @name will not be
  * copied, and the instance buffer will point to the string itself.
  */
-struct buffer_instance *create_instance(char *name)
+struct buffer_instance *create_instance(char *name __attribute__((unused)))
 {
 	struct buffer_instance *instance;
 
@@ -817,10 +817,10 @@ static void ptrace_wait(int main_pid)
 				/* forked a child */
 				ptrace(PTRACE_GETEVENTMSG, pid, NULL, &child);
 				ptrace(PTRACE_SETOPTIONS, child, NULL,
-				       PTRACE_O_TRACEFORK |
+				       (void*)(PTRACE_O_TRACEFORK |
 				       PTRACE_O_TRACEVFORK |
 				       PTRACE_O_TRACECLONE |
-				       PTRACE_O_TRACEEXIT);
+				       PTRACE_O_TRACEEXIT));
 				add_new_filter_pid(child);
 				ptrace(PTRACE_CONT, child, NULL, 0);
 				break;
@@ -831,11 +831,11 @@ static void ptrace_wait(int main_pid)
 				break;
 			}
 			ptrace(PTRACE_SETOPTIONS, pid, NULL,
-			       PTRACE_O_TRACEFORK |
+			       (void*)(PTRACE_O_TRACEFORK |
 			       PTRACE_O_TRACEVFORK |
 			       PTRACE_O_TRACECLONE |
-			       PTRACE_O_TRACEEXIT);
-			ptrace(PTRACE_CONT, pid, NULL, send_sig);
+			       PTRACE_O_TRACEEXIT));
+			ptrace(PTRACE_CONT, pid, NULL, (void*)send_sig);
 		}
 	} while (!finished && ret > 0 &&
 		 (!WIFEXITED(status) || pid != main_pid));
@@ -855,7 +855,7 @@ void trace_or_sleep(void)
 		sleep(10);
 }
 
-void run_cmd(int argc, char **argv)
+void run_cmd(int argc __attribute__((unused)), char **argv)
 {
 	int status;
 	int pid;
@@ -1034,7 +1034,7 @@ reset_events_instance(struct buffer_instance *instance)
 	char *path;
 	char c;
 	int fd;
-	int i;
+	unsigned int i;
 	int ret;
 
 	if (use_old_event_method()) {
@@ -1514,7 +1514,7 @@ static int expand_event_files(struct buffer_instance *instance,
 	char *path;
 	char *p;
 	int ret;
-	int i;
+	unsigned int i;
 
 	p = malloc_or_die(strlen(file) + strlen("events//filter") + 1);
 	sprintf(p, "events/%s/filter", file);
@@ -1680,7 +1680,7 @@ static int count_cpus(void)
 	return cpus;
 }
 
-static void finish(int sig)
+static void finish(int sig __attribute__((unused)))
 {
 	/* all done */
 	if (recorder)
@@ -1688,7 +1688,7 @@ static void finish(int sig)
 	finished = 1;
 }
 
-static void flush(int sig)
+static void flush(int sig __attribute__((unused)))
 {
 	if (recorder)
 		tracecmd_stop_recording(recorder);
@@ -2013,7 +2013,7 @@ static void touch_file(const char *file)
 
 static void record_data(char *date2ts)
 {
-	struct tracecmd_option **buffer_options;
+	struct tracecmd_option **buffer_options = 0;
 	struct tracecmd_output *handle;
 	struct buffer_instance *instance;
 	char **temp_files;
@@ -2210,7 +2210,7 @@ find_ts_in_page(struct pevent *pevent, void *page, int size)
 			/* Make sure this is our event */
 			field = pevent_find_field(event, "buf");
 			/* the trace_marker adds a '\n' */
-			if (field && strcmp(STAMP"\n", record->data + field->offset) == 0)
+			if (field && strcmp(STAMP"\n", (char*)record->data + field->offset) == 0)
 				ts = record->ts;
 		}
 		last_record = record;
@@ -2276,7 +2276,7 @@ static char *read_file(char *file, int *psize)
 {
 	char buffer[BUFSIZ];
 	char *path;
-	char *buf;
+	char *buf = 0;
 	int size = 0;
 	int fd;
 	int r;
@@ -2686,7 +2686,7 @@ void trace_record (int argc, char **argv)
 	const char *output = NULL;
 	const char *option;
 	struct event_list *event;
-	struct event_list *last_event;
+	struct event_list *last_event = NULL;
 	struct tracecmd_event_list *list;
 	struct buffer_instance *instance = &top_instance;
 	enum trace_type type;

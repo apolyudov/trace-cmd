@@ -26,17 +26,16 @@
 
 static ssize_t __do_write(int fd, void *data, size_t size)
 {
-	ssize_t tot = 0;
+	size_t tot = 0;
 	ssize_t w;
 
 	do {
 		w = write(fd, data, size - tot);
-		tot += w;
-
-		if (!w)
-			break;
 		if (w < 0)
 			return w;
+		if (!w)
+			break;
+		tot += w;
 	} while (tot != size);
 
 	return tot;
@@ -50,7 +49,7 @@ __do_write_check(int fd, void *data, size_t size)
 	ret = __do_write(fd, data, size);
 	if (ret < 0)
 		return ret;
-	if (ret != size)
+	if ((size_t)ret != size)
 		return -1;
 
 	return 0;

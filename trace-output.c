@@ -448,7 +448,7 @@ static void glob_events(struct tracecmd_output *handle,
 	int do_ftrace = 0;
 	int events_len;
 	int ret;
-	int i;
+	unsigned int i;
 
 	if (strncmp(str, "ftrace/", 7) == 0)
 		do_ftrace = 1;
@@ -1103,7 +1103,7 @@ static int __tracecmd_append_cpu_data(struct tracecmd_output *handle,
 			goto out_free;
 		}
 		check_size = copy_file(handle, cpu_data_files[i]);
-		if (check_size != sizes[i]) {
+		if (check_size != (off64_t)sizes[i]) {
 			errno = EINVAL;
 			warning("did not match size of %lld to %lld",
 			    check_size, sizes[i]);

@@ -90,12 +90,12 @@ static int create_type_len(struct pevent *pevent, int time, int len)
 static int write_record(struct tracecmd_input *handle,
 			struct pevent_record *record,
 			struct cpu_data *cpu_data,
-			enum split_types type)
+			enum split_types type __attribute__((unused)))
 {
 	unsigned long long diff;
 	struct pevent *pevent;
 	void *page;
-	int len;
+	int len = 0;
 	char *ptr;
 	int index = 0;
 	int time;
@@ -104,7 +104,7 @@ static int write_record(struct tracecmd_input *handle,
 
 	pevent = tracecmd_get_pevent(handle);
 
-	ptr = page + cpu_data->index;
+	ptr = (char*)page + cpu_data->index;
 
 	diff = record->ts - cpu_data->ts;
 	if (diff > (1 << 27)) {
@@ -196,7 +196,7 @@ static int parse_cpu(struct tracecmd_input *handle,
 {
 	struct pevent_record *record;
 	struct pevent *pevent;
-	void *ptr;
+	char *ptr;
 	int page_size;
 	int long_size = 0;
 	int cpus;
@@ -423,7 +423,7 @@ void trace_split (int argc, char **argv)
 	char *output_file;
 	enum split_types split_type = SPLIT_NONE;
 	enum split_types type = SPLIT_NONE;
-	int count;
+	int count = 0;
 	int repeat = 0;
 	int percpu = 0;
 	int cpu = -1;

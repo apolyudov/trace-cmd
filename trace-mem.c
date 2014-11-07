@@ -367,7 +367,7 @@ process_kmalloc(struct pevent *pevent, struct pevent_record *record,
 }
 
 static void
-process_kfree(struct pevent *pevent, struct pevent_record *record,
+process_kfree(struct pevent *pevent __attribute__((unused)), struct pevent_record *record,
 	      struct format_field *ptr_field)
 {
 	unsigned long long ptr;
@@ -433,7 +433,7 @@ static void sort_list(void)
 {
 	struct func_descr *funcd;
 	int h;
-	int i = 0;
+	unsigned int i = 0;
 
 	func_list = zalloc(sizeof(*func_list) * func_count);
 

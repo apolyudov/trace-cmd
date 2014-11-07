@@ -157,9 +157,9 @@ static const char *show_records(struct list_head *pages)
 	return buf;
 }
 #else
-static inline void remove_record(struct page *page, struct pevent_record *record) {}
-static inline void add_record(struct page *page, struct pevent_record *record) {}
-static const char *show_records(struct list_head *pages)
+static inline void remove_record(struct page *page __attribute__((unused)), struct pevent_record *record __attribute__((unused))) {}
+static inline void add_record(struct page *page __attribute__((unused)), struct pevent_record *record __attribute__((unused))) {}
+static const char *show_records(struct list_head *pages __attribute__((unused)))
 {
 	return "";
 }
@@ -282,7 +282,7 @@ static unsigned long long read8(struct tracecmd_input *handle)
 	unsigned long long data;
 
 	if (do_read_check(handle, &data, 8))
-		return -1;
+		return (unsigned long long)-1;
 
 	return __data2host8(pevent, data);
 }
@@ -529,7 +529,7 @@ static int read_ftrace_files(struct tracecmd_input *handle, const char *regex)
 
 	for (i = 0; i < count; i++) {
 		size = read8(handle);
-		if (size < 0)
+		if ((long long)size < 0)
 			return -1;
 		ret = read_ftrace_file(handle, size, print_all, ereg);
 		if (ret < 0)
@@ -612,7 +612,7 @@ static int read_event_files(struct tracecmd_input *handle, const char *regex)
 
 		for (x=0; x < count; x++) {
 			size = read8(handle);
-			if (size < 0)
+			if ((long long)size < 0)
 				goto failed;
 
 			ret = read_event_file(handle, system, size,
@@ -929,7 +929,7 @@ static int get_page(struct tracecmd_input *handle, int cpu,
 		    off64_t offset)
 {
 	/* Don't map if the page is already where we want */
-	if (handle->cpu_data[cpu].offset == offset &&
+	if ((off64_t)handle->cpu_data[cpu].offset == offset &&
 	    handle->cpu_data[cpu].page)
 		return 1;
 
@@ -943,9 +943,9 @@ static int get_page(struct tracecmd_input *handle, int cpu,
 		return -1;
 	}
 
-	if (offset < handle->cpu_data[cpu].file_offset ||
-	    offset > handle->cpu_data[cpu].file_offset +
-	    handle->cpu_data[cpu].file_size) {
+	if (offset < (off64_t)handle->cpu_data[cpu].file_offset ||
+	    offset > ((off64_t)handle->cpu_data[cpu].file_offset +
+	              (off64_t)handle->cpu_data[cpu].file_size)) {
 		errno = -EINVAL;
 		die("bad page offset %llx", offset);
 		return -1;
@@ -977,7 +977,7 @@ static int get_next_page(struct tracecmd_input *handle, int cpu)
 
 	free_page(handle, cpu);
 
-	if (handle->cpu_data[cpu].size <= handle->page_size) {
+	if (handle->cpu_data[cpu].size <= (unsigned)handle->page_size) {
 		handle->cpu_data[cpu].offset = 0;
 		return 0;
 	}
@@ -1223,7 +1223,7 @@ tracecmd_read_cpu_last(struct tracecmd_input *handle, int cpu)
 	 * or just padding on it.
 	 */
 	if (!record) {
-		if (page_offset == handle->cpu_data[cpu].file_offset)
+		if (page_offset == (off64_t)handle->cpu_data[cpu].file_offset)
 			return NULL;
 		page_offset -= handle->page_size;
 		goto again;
@@ -1476,7 +1476,7 @@ tracecmd_translate_data(struct tracecmd_input *handle,
 	record->data = kbuffer_translate_data(swap, ptr, &length);
 	record->size = length;
 	if (record->data)
-		record->record_size = record->size + (record->data - ptr);
+		record->record_size = record->size + ((char*)record->data - (char*)ptr);
 
 	return record;
 }
@@ -1534,7 +1534,7 @@ tracecmd_read_page_record(struct pevent *pevent, void *page, int size,
 	}
 
 	if (last_record) {
-		if (last_record->data < page || last_record->data >= (page + size)) {
+		if (last_record->data < page || (char*)last_record->data >= ((char*)page + size)) {
 			warning("tracecmd_read_page_record: bad last record (size=%u)",
 				last_record->size);
 			goto out_free;
@@ -2050,7 +2050,7 @@ static int read_data_and_size(struct tracecmd_input *handle,
 				     char **data, unsigned long long *size)
 {
 	*size = read8(handle);
-	if (*size < 0)
+	if ((long long)*size < 0)
 		return -1;
 	*data = malloc(*size + 1);
 	if (!*data)
@@ -2505,7 +2505,7 @@ static int copy_ftrace_files(struct tracecmd_input *handle, int fd)
 	for (i = 0; i < count; i++) {
 
 		size = read_copy_size8(handle, fd);
-		if (size < 0)
+		if ((long long)size < 0)
 			return -1;
 
 		if (read_copy_data(handle, size, fd) < 0)
@@ -2544,7 +2544,7 @@ static int copy_event_files(struct tracecmd_input *handle, int fd)
 
 		for (x=0; x < count; x++) {
 			size = read_copy_size8(handle, fd);
-			if (size < 0)
+			if ((long long)size < 0)
 				return -1;
 
 			ret = read_copy_data(handle, size, fd);
@@ -2598,7 +2598,7 @@ static int copy_command_lines(struct tracecmd_input *handle, int fd)
 	if (!size)
 		return 0; /* OK? */
 
-	if (size < 0)
+	if ((long)size < 0)
 		return -1;
 
 	if (read_copy_data(handle, size, fd) < 0)

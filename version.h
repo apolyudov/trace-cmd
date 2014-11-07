@@ -6,7 +6,7 @@
 #ifdef BUILDGUI
 #include "ks_version.h"
 #else
-#include "tc_version.h"
+#include <tc_version.h>
 #endif
 
 #define _STR(x)	#x

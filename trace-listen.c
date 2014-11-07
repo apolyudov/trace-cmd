@@ -113,7 +113,7 @@ static int process_option(char *option)
 }
 
 static int done;
-static void finish(int sig)
+static void finish(int sig __attribute__((unused)))
 {
 	done = 1;
 }
@@ -514,7 +514,7 @@ static void put_together_file(int cpus, int ofd, const char *node,
 static void process_client(const char *node, const char *port, int fd)
 {
 	int *pid_array;
-	int pagesize;
+	int pagesize = 0;
 	int cpus;
 	int ofd;
 
@@ -658,7 +658,7 @@ static void kill_clients(void)
 	saved_pids = 0;
 }
 
-static void clean_up(int sig)
+static void clean_up(int sig __attribute__((unused)))
 {
 	int status;
 	int ret;

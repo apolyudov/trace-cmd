@@ -1274,7 +1274,7 @@ static unsigned int type_size(const char *name)
 		{ "s32",  4 },
 		{ "s64",  8 },
 		{ "char", 1 },
-		{ },
+		{ NULL,   0 },
 	};
 	int i;
 
@@ -1550,7 +1550,7 @@ static int event_read_fields(struct event_format *event, struct format_field **f
 				field->elementsize = 1;
 			else if (field->flags & FIELD_IS_LONG)
 				field->elementsize = event->pevent ?
-						     event->pevent->long_size :
+						     (size_t)event->pevent->long_size :
 						     sizeof(long);
 		} else
 			field->elementsize = field->size;
@@ -3171,7 +3171,7 @@ int pevent_read_number_field(struct format_field *field, const void *data,
 	case 4:
 	case 8:
 		*value = pevent_read_number(field->event->pevent,
-					    data + field->offset, field->size);
+					    (const char*)data + field->offset, field->size);
 		return 0;
 	default:
 		return -1;
@@ -3214,7 +3214,7 @@ static int __parse_common(struct pevent *pevent, void *data,
 		if (ret < 0)
 			return ret;
 	}
-	return pevent_read_number(pevent, data + *offset, *size);
+	return pevent_read_number(pevent, (const char*)data + *offset, *size);
 }
 
 static int trace_parse_common_type(struct pevent *pevent, void *data)
@@ -3304,7 +3304,7 @@ struct event_format *
 pevent_find_event_by_name(struct pevent *pevent,
 			  const char *sys, const char *name)
 {
-	struct event_format *event;
+	struct event_format *event = NULL;
 	int i;
 
 	if (pevent->last_event &&
@@ -3353,7 +3353,7 @@ eval_num_arg(void *data, int size, struct event_format *event, struct print_arg 
 			
 		}
 		/* must be a number */
-		val = pevent_read_number(pevent, data + arg->field.field->offset,
+		val = pevent_read_number(pevent, (const char*)data + arg->field.field->offset,
 				arg->field.field->size);
 		break;
 	case PRINT_FLAGS:
@@ -3396,7 +3396,7 @@ eval_num_arg(void *data, int size, struct event_format *event, struct print_arg 
 			switch (larg->type) {
 			case PRINT_DYNAMIC_ARRAY:
 				offset = pevent_read_number(pevent,
-						   data + larg->dynarray.field->offset,
+						   (const char*)data + larg->dynarray.field->offset,
 						   larg->dynarray.field->size);
 				if (larg->dynarray.field->elementsize)
 					field_size = larg->dynarray.field->elementsize;
@@ -3425,7 +3425,7 @@ eval_num_arg(void *data, int size, struct event_format *event, struct print_arg 
 				goto default_op; /* oops, all bets off */
 			}
 			val = pevent_read_number(pevent,
-						 data + offset, field_size);
+						 (const char*)data + offset, field_size);
 			if (typearg)
 				val = eval_type(val, typearg, 1);
 			break;
@@ -3524,7 +3524,7 @@ eval_num_arg(void *data, int size, struct event_format *event, struct print_arg 
 	case PRINT_DYNAMIC_ARRAY:
 		/* Without [], we pass the address to the dynamic data */
 		offset = pevent_read_number(pevent,
-					    data + arg->dynarray.field->offset,
+					    (const char*)data + arg->dynarray.field->offset,
 					    arg->dynarray.field->size);
 		/*
 		 * The actual length of the dynamic array is stored
@@ -3694,7 +3694,7 @@ static void print_str_arg(struct trace_seq *s, void *data, int size,
 		 */
 		if (!(field->flags & FIELD_IS_ARRAY) &&
 		    field->size == pevent->long_size) {
-			addr = *(unsigned long *)(data + field->offset);
+			addr = *(unsigned long *)((const char*)data + field->offset);
 			/* Check if it matches a print format */
 			printk = find_printk(pevent, addr);
 			if (printk)
@@ -3709,7 +3709,7 @@ static void print_str_arg(struct trace_seq *s, void *data, int size,
 					 __func__);
 			return;
 		}
-		memcpy(str, data + field->offset, len);
+		memcpy(str, (const char*)data + field->offset, len);
 		str[len] = 0;
 		print_str_to_seq(s, format, len_arg, str);
 		free(str);
@@ -3746,9 +3746,9 @@ static void print_str_arg(struct trace_seq *s, void *data, int size,
 		if (arg->hex.field->type == PRINT_DYNAMIC_ARRAY) {
 			unsigned long offset;
 			offset = pevent_read_number(pevent,
-				data + arg->hex.field->dynarray.field->offset,
+				(const char*)data + arg->hex.field->dynarray.field->offset,
 				arg->hex.field->dynarray.field->size);
-			hex = data + (offset & 0xffff);
+			hex = (unsigned char*)data + (offset & 0xffff);
 		} else {
 			field = arg->hex.field->field.field;
 			if (!field) {
@@ -3758,7 +3758,7 @@ static void print_str_arg(struct trace_seq *s, void *data, int size,
 					goto out_warning_field;
 				arg->hex.field->field.field = field;
 			}
-			hex = data + field->offset;
+			hex = (unsigned char*)data + field->offset;
 		}
 		len = eval_num_arg(data, size, event, arg->hex.size);
 		for (i = 0; i < len; i++) {
@@ -3779,9 +3779,9 @@ static void print_str_arg(struct trace_seq *s, void *data, int size,
 			f = pevent_find_any_field(event, arg->string.string);
 			arg->string.offset = f->offset;
 		}
-		str_offset = data2host4(pevent, data + arg->string.offset);
+		str_offset = data2host4(pevent, (const char*)data + arg->string.offset);
 		str_offset &= 0xffff;
-		print_str_to_seq(s, format, len_arg, ((char *)data) + str_offset);
+		print_str_to_seq(s, format, len_arg, ((const char*)data) + str_offset);
 		break;
 	}
 	case PRINT_BSTRING:
@@ -3797,11 +3797,11 @@ static void print_str_arg(struct trace_seq *s, void *data, int size,
 			f = pevent_find_any_field(event, arg->bitmask.bitmask);
 			arg->bitmask.offset = f->offset;
 		}
-		bitmask_offset = data2host4(pevent, data + arg->bitmask.offset);
+		bitmask_offset = data2host4(pevent, (const char*)data + arg->bitmask.offset);
 		bitmask_size = bitmask_offset >> 16;
 		bitmask_offset &= 0xffff;
 		print_bitmask_to_seq(pevent, s, format, len_arg,
-				     data + bitmask_offset, bitmask_size);
+				     (const char*)data + bitmask_offset, bitmask_size);
 		break;
 	}
 	case PRINT_OP:
@@ -3958,7 +3958,7 @@ static struct print_arg *make_bprint_args(char *fmt, void *data, int size, struc
 		pevent->bprint_ip_field = ip_field;
 	}
 
-	ip = pevent_read_number(pevent, data + ip_field->offset, ip_field->size);
+	ip = pevent_read_number(pevent, (const char*)data + ip_field->offset, ip_field->size);
 
 	/*
 	 * The first arg is the IP pointer.
@@ -3979,8 +3979,8 @@ static struct print_arg *make_bprint_args(char *fmt, void *data, int size, struc
 		goto out_free;
 
 	/* skip the first "%pf: " */
-	for (ptr = fmt + 5, bptr = data + field->offset;
-	     bptr < data + size && *ptr; ptr++) {
+	for (ptr = fmt + 5, bptr = (void *)((char*)data + field->offset);
+	     bptr < (void*)((char*)data + size) && *ptr; ptr++) {
 		int ls = 0;
 
 		if (*ptr == '%') {
@@ -4029,7 +4029,7 @@ static struct print_arg *make_bprint_args(char *fmt, void *data, int size, struc
 				bptr = (void *)(((unsigned long)bptr + 3) &
 						~3);
 				val = pevent_read_number(pevent, bptr, vsize);
-				bptr += vsize;
+				bptr = (void*)((char*)bptr + vsize);
 				arg = alloc_arg();
 				if (!arg) {
 					do_warning_event(event, "%s(%d): not enough memory!",
@@ -4064,7 +4064,7 @@ static struct print_arg *make_bprint_args(char *fmt, void *data, int size, struc
 				arg->string.string = strdup(bptr);
 				if (!arg->string.string)
 					goto out_free;
-				bptr += strlen(bptr) + 1;
+				bptr = (void*)((char*)bptr + strlen(bptr) + 1);
 				*next = arg;
 				next = &arg->next;
 			default:
@@ -4101,7 +4101,7 @@ get_bprint_format(void *data, int size __maybe_unused,
 		pevent->bprint_fmt_field = field;
 	}
 
-	addr = pevent_read_number(pevent, data + field->offset, field->size);
+	addr = pevent_read_number(pevent, (const char*)data + field->offset, field->size);
 
 	printk = find_printk(pevent, addr);
 	if (!printk) {
@@ -4148,7 +4148,7 @@ static void print_mac_arg(struct trace_seq *s, int mac, void *data, int size,
 		trace_seq_printf(s, "INVALIDMAC");
 		return;
 	}
-	buf = data + arg->field.field->offset;
+	buf = (unsigned char*)data + arg->field.field->offset;
 	trace_seq_printf(s, fmt, buf[0], buf[1], buf[2], buf[3], buf[4], buf[5]);
 }
 
@@ -4177,14 +4177,14 @@ static void print_event_fields(struct trace_seq *s, void *data,
 			offset = field->offset;
 			len = field->size;
 			if (field->flags & FIELD_IS_DYNAMIC) {
-				val = pevent_read_number(event->pevent, data + offset, len);
+				val = pevent_read_number(event->pevent, (const char*)data + offset, len);
 				offset = val;
 				len = offset >> 16;
 				offset &= 0xffff;
 			}
 			if (field->flags & FIELD_IS_STRING &&
-			    is_printable_array(data + offset, len)) {
-				trace_seq_printf(s, "%s", (char *)data + offset);
+			    is_printable_array((char*)data + offset, len)) {
+				trace_seq_printf(s, "%s", (unsigned char*)data + offset);
 			} else {
 				trace_seq_puts(s, "ARRAY[");
 				for (i = 0; i < len; i++) {
@@ -4197,7 +4197,7 @@ static void print_event_fields(struct trace_seq *s, void *data,
 				field->flags &= ~FIELD_IS_STRING;
 			}
 		} else {
-			val = pevent_read_number(event->pevent, data + field->offset,
+			val = pevent_read_number(event->pevent, (const char*)data + field->offset,
 						 field->size);
 			if (field->flags & FIELD_IS_POINTER) {
 				trace_seq_printf(s, "0x%llx", val);
@@ -4248,7 +4248,7 @@ static void pretty_print(struct trace_seq *s, void *data, int size, struct event
 	char format[32];
 	int show_func;
 	int len_as_arg;
-	int len_arg;
+	int len_arg = 0;
 	int len;
 	int ls;
 
@@ -4498,8 +4498,8 @@ void pevent_data_lat_fmt(struct pevent *pevent,
 	static int migrate_disable_exists;
 	unsigned int lat_flags;
 	unsigned int pc;
-	int lock_depth;
-	int migrate_disable;
+	int lock_depth = 0;
+	int migrate_disable = 0;
 	int hardirq;
 	int softirq;
 	void *data = record->data;
@@ -5445,8 +5445,8 @@ int pevent_strerror(struct pevent *pevent __maybe_unused,
 	const char *msg;
 
 	if (errnum >= 0) {
-		msg = strerror_r(errnum, buf, buflen);
-		if (msg != buf) {
+		msg = (char*)strerror_r(errnum, buf, buflen);
+		if (msg && msg != buf) {
 			size_t len = strlen(msg);
 			memcpy(buf, msg, min(buflen - 1, len));
 			*(buf + min(buflen - 1, len)) = '\0';
@@ -5525,13 +5525,13 @@ void *pevent_get_field_raw(struct trace_seq *s, struct event_format *event,
 	offset = field->offset;
 	if (field->flags & FIELD_IS_DYNAMIC) {
 		offset = pevent_read_number(event->pevent,
-					    data + offset, field->size);
+					    (const char*)data + offset, field->size);
 		*len = offset >> 16;
 		offset &= 0xffff;
 	} else
 		*len = field->size;
 
-	return data + offset;
+	return (void *)((char*)data + offset);
 }
 
 /**

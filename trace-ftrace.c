@@ -77,7 +77,7 @@ static int find_ret_event(struct tracecmd_ftrace *finfo, struct pevent *pevent)
 	} while (0)
 
 static int function_handler(struct trace_seq *s, struct pevent_record *record,
-			    struct event_format *event, void *context)
+			    struct event_format *event, void *context __attribute__((unused)))
 {
 	struct pevent *pevent = event->pevent;
 	unsigned long long function;
@@ -119,13 +119,13 @@ get_return_for_leaf(struct trace_seq *s, int cpu, int cur_pid,
 	if (pevent_get_common_field_val(s, finfo->fgraph_ret_event, "common_type", next, &type, 1))
 		return NULL;
 
-	if (type != finfo->fgraph_ret_id)
+	if (type != (unsigned long long)finfo->fgraph_ret_id)
 		return NULL;
 
 	if (pevent_get_common_field_val(s, finfo->fgraph_ret_event, "common_pid", next, &pid, 1))
 		return NULL;
 
-	if (cur_pid != pid)
+	if (cur_pid != (int)pid)
 		return NULL;
 
 	/* We aleady know this is a funcgraph_ret_event */
@@ -176,7 +176,7 @@ static void print_graph_duration(struct trace_seq *s, unsigned long long duratio
 
 	/* Print nsecs (we don't want to exceed 7 numbers) */
 	if ((s->len - len) < 7) {
-		snprintf(nsecs_str, MIN(sizeof(nsecs_str), 8 - len), "%03lu", nsecs_rem);
+		snprintf(nsecs_str, MIN((ssize_t)sizeof(nsecs_str), 8 - len), "%03lu", nsecs_rem);
 		trace_seq_printf(s, ".%s", nsecs_str);
 	}
 
@@ -387,8 +387,8 @@ trace_stack_handler(struct trace_seq *s, struct pevent_record *record,
 
 	long_size_check(finfo);
 
-	for (data += field->offset; data < record->data + record->size;
-	     data += finfo->long_size) {
+	for (data = (void*)((char*)data + field->offset); (char*)data < (char*)record->data + record->size;
+	     data = (void*)((char*)data + finfo->long_size)) {
 		addr = pevent_read_number(event->pevent, data, finfo->long_size);
 
 		if ((finfo->long_size == 8 && addr == (unsigned long long)-1) ||

@@ -43,8 +43,8 @@ static void show_error(char *error_buf, const char *fmt, ...)
 	unsigned long long index;
 	const char *input;
 	va_list ap;
-	int len;
-	int i;
+	size_t len;
+	size_t i;
 
 	input = pevent_get_input_buf();
 	index = pevent_get_input_buf_ptr();
@@ -1869,7 +1869,7 @@ static const char *get_field_str(struct filter_arg *arg, struct pevent_record *r
 
 	/* If the field is not a string convert it */
 	if (arg->str.field->flags & FIELD_IS_STRING) {
-		val = record->data + arg->str.field->offset;
+		val = (const char*)record->data + arg->str.field->offset;
 
 		/*
 		 * We need to copy the data since we can't be sure the field
@@ -2157,7 +2157,7 @@ static char *op_to_str(struct event_filter *filter, struct filter_arg *arg)
 	return str;
 }
 
-static char *val_to_str(struct event_filter *filter, struct filter_arg *arg)
+static char *val_to_str(struct event_filter *filter __attribute__((unused)), struct filter_arg *arg)
 {
 	char *str = NULL;
 
@@ -2166,7 +2166,7 @@ static char *val_to_str(struct event_filter *filter, struct filter_arg *arg)
 	return str;
 }
 
-static char *field_to_str(struct event_filter *filter, struct filter_arg *arg)
+static char *field_to_str(struct event_filter *filter __attribute__((unused)), struct filter_arg *arg)
 {
 	return strdup(arg->field.field->name);
 }

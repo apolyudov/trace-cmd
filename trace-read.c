@@ -264,10 +264,10 @@ static void test_save(struct pevent_record *record, int cpu)
 #endif /* TEST_FIRST_LAST */
 
 #ifndef DO_TEST
-static void show_test(struct tracecmd_input *handle)
+static void show_test(struct tracecmd_input *handle __attribute__((unused)))
 {
 }
-static void test_save(struct pevent_record *record, int cpu)
+static void test_save(struct pevent_record *record __attribute__((unused)), int cpu __attribute__((unused)))
 {
 }
 #endif
@@ -294,7 +294,7 @@ static void add_handle(struct tracecmd_input *handle, const char *file)
 		while (*item->file != '/' && item->file >= file)
 			item->file--;
 		item->file++;
-		if (strlen(item->file) > max_file_size)
+		if (strlen(item->file) > (size_t)max_file_size)
 			max_file_size = strlen(item->file);
 	}
 	list_add_tail(&item->list, &handle_list);
@@ -508,8 +508,8 @@ static void process_filters(struct handle_list *handles)
 	}
 }
 
-static int filter_record(struct tracecmd_input *handle,
-			 struct pevent_record *record)
+static int filter_record(struct tracecmd_input *handle __attribute__((unused)),
+			 struct pevent_record *record __attribute__((unused)))
 {
 	return 0;
 }
@@ -575,7 +575,7 @@ __find_wakeup(unsigned int key, unsigned int val)
 	struct wakeup_info *info = wakeup_hash[key];
 
 	while (info) {
-		if (info->pid == val)
+		if (info->pid == (int)val)
 			return info;
 		info = info->next;
 	}
@@ -851,7 +851,7 @@ get_next_record(struct handle_list *handles, int *next_cpu)
 			for (i = 0; (cpu = filter_cpus[i]) >= 0; i++) {
 				precord = tracecmd_peek_data(handles->handle, cpu);
 				if (precord &&
-				    (first_record || precord->ts < last_stamp)) {
+				    (first_record || precord->ts < (unsigned long long)last_stamp)) {
 					next_cpu = cpu;
 					last_stamp = precord->ts;
 					first_record = 0;
@@ -1028,7 +1028,7 @@ struct tracecmd_input *read_trace_header(const char *file)
 	return tracecmd_alloc_fd(input_fd);
 }
 
-static void sig_end(int sig)
+static void sig_end(int sig __attribute__((unused)))
 {
 	fprintf(stderr, "trace-cmd: Received SIGINT\n");
 	exit(0);
@@ -1171,7 +1171,7 @@ enum {
 void trace_report (int argc, char **argv)
 {
 	struct tracecmd_input *handle;
-	struct pevent *pevent;
+	struct pevent *pevent = NULL;
 	struct event_str *raw_events = NULL;
 	struct event_str *nohandler_events = NULL;
 	struct event_str **raw_ptr = &raw_events;
