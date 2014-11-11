@@ -24,7 +24,9 @@
 #include "event-utils.h"
 #include "event-parse.h"
 
+#ifndef MIN
 #define MIN(a,b) (((a)>(b))?(b):(a))
+#endif
 #define TRACECMD_ERR_MSK	((unsigned long)(-1) & ~((1UL << 14) - 1))
 #define TRACECMD_ISERR(ptr)	((unsigned long)(ptr) > TRACECMD_ERR_MSK)
 #define TRACECMD_ERROR(ret)	((void *)((unsigned long)(ret) | TRACECMD_ERR_MSK))

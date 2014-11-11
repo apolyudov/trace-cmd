@@ -3,12 +3,12 @@ LOCAL_PATH:= $(call my-dir)
 include $(CLEAR_VARS)
 
 LOCAL_MODULE := trace-cmd
-LOCAL_C_INCLUDES := $(TARGET_OUT_INTERMEDIATES)/include/trace_cmd bionic/libc/include
+LOCAL_C_INCLUDES := $(TARGET_OUT_INTERMEDIATES)/include/trace_cmd
 
 LOCAL_SHARED_LIBRARIES := libdl
 
 LOCAL_GENERATED_SOURCES := $(TARGET_OUT_INTERMEDIATES)/include/trace_cmd/tc_version.h
-LOCAL_CFLAGS := -Wall -g -DDEBUG -std=gnu99 -fPIC -DPIC -rdynamic
+LOCAL_CFLAGS := -Wall -std=gnu99 -fPIC -DPIC -rdynamic
 
 # trace-cmd version
 TC_VERSION = 2
@@ -54,14 +54,15 @@ $(TARGET_OUT_INTERMEDIATES)/include/trace_cmd: force
 	mkdir -p $@
 
 # sorce code ot trace parser library
-LOCAL_SRC_FILES:= \
+libparse_SRC_FILES = \
 	event-parse.c \
 	trace-seq.c \
 	parse-filter.c \
 	parse-utils.c
 
 # sorce code ot trace-cmd library
-LOCAL_SRC_FILES += \
+libtrace_SRC_FILES = \
+	$(libparse_SRC_FILES) \
 	trace-util.c \
 	trace-input.c \
 	trace-ftrace.c \
@@ -74,7 +75,8 @@ LOCAL_SRC_FILES += \
 	event-plugin.c
 
 # sorce code ot trace-cmd
-LOCAL_SRC_FILES += \
+trace_SRC_FILES = \
+	$(libtrace_SRC_FILES) \
 	trace-cmd.c \
 	trace-record.c \
 	trace-read.c \
@@ -109,7 +111,29 @@ LOCAL_SRC_FILES += $(PLUGIN_OBJS)
 endif
 
 # extra dependency: glob.c is not part of Bionic as of KK
-LOCAL_SRC_FILES += \
+LOCAL_SRC_FILES = \
+	$(trace_SRC_FILES) \
 	glob.c
 
 include $(BUILD_EXECUTABLE)
+
+include $(CLEAR_VARS)
+
+LOCAL_MODULE := trace-cmd
+LOCAL_C_INCLUDES := $(HOST_OUT_INTERMEDIATES)/include/trace_cmd
+
+$(HOST_OUT_INTERMEDIATES)/include/trace_cmd/tc_version.h: $(HOST_OUT_INTERMEDIATES)/include/trace_cmd force
+	$(call update_version.h)
+
+$(HOST_OUT_INTERMEDIATES)/include/trace_cmd: force
+	mkdir -p $@
+
+LOCAL_CFLAGS := -O2 -g -Wall -Wno-unused-parameter
+LOCAL_CFLAGS += -D_XOPEN_SOURCE -D_GNU_SOURCE
+
+LOCAL_GENERATED_SOURCES := $(HOST_OUT_INTERMEDIATES)/include/trace_cmd/tc_version.h
+LOCAL_LDLIBS += -lrt -ldl -lpthread
+
+LOCAL_SRC_FILES = $(trace_SRC_FILES)
+
+include $(BUILD_HOST_EXECUTABLE)
